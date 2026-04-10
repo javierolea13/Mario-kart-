@@ -13,7 +13,7 @@ const App = (() => {
     selectedPlayers: [],
     cupName: '',
     selectedCup: null, // { name, tracks[], emoji } or null for custom
-    currentRace: 1,
+    currentRace: 0,
     raceResults: [{}, {}, {}, {}],  // positions for each race
     trackNames: ['', '', '', '']
   };
