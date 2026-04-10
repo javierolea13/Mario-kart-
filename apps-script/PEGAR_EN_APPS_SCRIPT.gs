@@ -57,8 +57,8 @@ function setupSheets() {
 // ---- SISTEMA DE PUNTOS OFICIAL MARIO KART ----
 
 const POINTS_TABLE = {
-  1: 15, 2: 12, 3: 10, 4: 9, 5: 8, 6: 7,
-  7: 6,  8: 5,  9: 4, 10: 3, 11: 2, 12: 1
+  1: 15, 2: 12, 3: 10, 4: 9, 5: 9, 6: 8,
+  7: 8,  8: 7,  9: 7, 10: 6, 11: 6, 12: 6
 };
 
 // ---- UTILIDADES ----

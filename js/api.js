@@ -47,10 +47,10 @@ const API = (() => {
     return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
   }
 
-  // Points table
+  // Points table (Mario Kart World official)
   const POINTS = {
-    1: 15, 2: 12, 3: 10, 4: 9, 5: 8, 6: 7,
-    7: 6,  8: 5,  9: 4, 10: 3, 11: 2, 12: 1
+    1: 15, 2: 12, 3: 10, 4: 9, 5: 9, 6: 8,
+    7: 8,  8: 7,  9: 7, 10: 6, 11: 6, 12: 6
   };
 
   function getPoints(position) {
