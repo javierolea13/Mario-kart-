@@ -9,6 +9,29 @@ const UI = (() => {
     return name.charAt(0).toUpperCase();
   }
 
+  // ---- LOGIN SCREEN ----
+  function renderLogin() {
+    return `
+      <div class="login-screen">
+        <div class="login-logo">🏎️</div>
+        <h1 class="login-title">MK World Tracker</h1>
+        <p class="login-subtitle">Mario Kart World - Nintendo Switch 2</p>
+        <div class="card" style="margin-top:24px">
+          <div class="form-group">
+            <label class="form-label">Contraseña</label>
+            <input type="password" id="login-password" class="form-input" placeholder="Ingresa la contraseña" autocomplete="off">
+          </div>
+          <div id="login-error" style="color:var(--red);font-size:0.85rem;margin-bottom:12px;display:none">Contraseña incorrecta</div>
+          <button id="login-btn" class="btn btn-primary btn-block">Entrar</button>
+        </div>
+        <div class="login-hint">
+          <p>👑 Admin: editar y registrar</p>
+          <p>👀 Invitado: solo ver</p>
+        </div>
+      </div>
+    `;
+  }
+
   function positionEmoji(pos) {
     if (pos === 1) return '🥇';
     if (pos === 2) return '🥈';
@@ -632,6 +655,7 @@ const UI = (() => {
   }
 
   return {
+    renderLogin,
     renderDashboard,
     renderPlayers,
     renderGPSelectPlayers,

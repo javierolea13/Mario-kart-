@@ -8,6 +8,60 @@ const App = (() => {
   let currentPage = 'dashboard';
   let data = { players: [], tournaments: [], races: [], results: [] };
 
+  // Auth state
+  const AUTH_KEY = 'mktracker_auth';
+  const USERS = {
+    '1234': { name: 'Javier Olea', role: 'admin' },
+    '5678': { name: 'Invitado', role: 'guest' }
+  };
+  let currentUser = null; // { name, role }
+
+  function getStoredAuth() {
+    const stored = localStorage.getItem(AUTH_KEY);
+    if (stored) {
+      try { return JSON.parse(stored); } catch { return null; }
+    }
+    return null;
+  }
+
+  function isAdmin() {
+    return currentUser && currentUser.role === 'admin';
+  }
+
+  function logout() {
+    localStorage.removeItem(AUTH_KEY);
+    currentUser = null;
+    showLogin();
+  }
+
+  function showLogin() {
+    app.innerHTML = UI.renderLogin();
+    // Hide nav and header for login
+    document.querySelector('.bottom-nav').style.display = 'none';
+    document.querySelector('.app-header').style.display = 'none';
+
+    document.getElementById('login-btn').addEventListener('click', handleLogin);
+    document.getElementById('login-password').addEventListener('keydown', e => {
+      if (e.key === 'Enter') handleLogin();
+    });
+  }
+
+  function handleLogin() {
+    const pw = document.getElementById('login-password').value;
+    const user = USERS[pw];
+    if (user) {
+      currentUser = user;
+      localStorage.setItem(AUTH_KEY, JSON.stringify(user));
+      document.querySelector('.bottom-nav').style.display = 'flex';
+      document.querySelector('.app-header').style.display = 'flex';
+      navigate(window.location.hash.slice(1) || 'dashboard');
+    } else {
+      const err = document.getElementById('login-error');
+      err.style.display = 'block';
+      document.getElementById('login-password').value = '';
+    }
+  }
+
   // GP Wizard state
   let gpState = {
     selectedPlayers: [],
@@ -22,6 +76,17 @@ const App = (() => {
 
   // ---- INIT ----
   async function init() {
+    // Check stored auth
+    const storedAuth = getStoredAuth();
+    if (storedAuth && USERS[Object.keys(USERS).find(k => USERS[k].role === storedAuth.role)]) {
+      currentUser = storedAuth;
+    }
+
+    if (!currentUser) {
+      showLogin();
+      return;
+    }
+
     // Load local data instantly, then sync in background
     data = API.getLocalData();
     setupRouting();
@@ -46,6 +111,10 @@ const App = (() => {
   }
 
   function navigate(page) {
+    // Guests can't access edit pages
+    if (!isAdmin() && (page === 'players' || page === 'new-gp')) {
+      page = 'dashboard';
+    }
     currentPage = page;
     updateNav();
     render();
@@ -55,6 +124,15 @@ const App = (() => {
     document.querySelectorAll('.nav-item').forEach(el => {
       el.classList.toggle('active', el.dataset.page === currentPage);
     });
+    // Hide edit nav items for guests
+    document.querySelectorAll('.nav-item[data-page="players"], .nav-item[data-page="new-gp"]').forEach(el => {
+      el.style.display = isAdmin() ? 'flex' : 'none';
+    });
+    // Show user role in header
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+      logoutBtn.style.display = currentUser ? 'block' : 'none';
+    }
   }
 
   // ---- RENDER ----
@@ -63,8 +141,13 @@ const App = (() => {
 
     let html = '';
 
-    // Config banner on dashboard
-    if (currentPage === 'dashboard') {
+    // User badge
+    if (currentUser) {
+      html += `<div class="user-badge">${currentUser.role === 'admin' ? '👑' : '👀'} ${currentUser.name}</div>`;
+    }
+
+    // Config banner on dashboard (admin only)
+    if (currentPage === 'dashboard' && isAdmin()) {
       html += UI.renderConfigBanner();
     }
 
@@ -115,6 +198,12 @@ const App = (() => {
 
   // ---- EVENT LISTENERS ----
   function attachEventListeners() {
+    // Logout
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', logout);
+    }
+
     // Config
     const saveConfigBtn = document.getElementById('save-config-btn');
     if (saveConfigBtn) {

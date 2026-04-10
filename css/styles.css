@@ -60,6 +60,7 @@ body {
   align-items: center;
   justify-content: center;
   width: 100%;
+  position: relative;
 }
 
 .logo {
@@ -802,6 +803,76 @@ select.form-input {
 .badge-gold { background: rgba(255,215,0,0.2); color: #FFD700; }
 .badge-silver { background: rgba(192,192,192,0.2); color: #C0C0C0; }
 .badge-bronze { background: rgba(205,127,50,0.2); color: #CD7F32; }
+
+/* ---- LOGIN SCREEN ---- */
+.login-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 70vh;
+  text-align: center;
+  padding: 20px;
+}
+
+.login-logo {
+  font-size: 4rem;
+  margin-bottom: 8px;
+}
+
+.login-title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--red);
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.3);
+}
+
+.login-subtitle {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-top: 4px;
+}
+
+.login-hint {
+  margin-top: 24px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.login-hint p {
+  margin: 4px 0;
+}
+
+/* ---- USER BADGE ---- */
+.user-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+/* ---- LOGOUT BUTTON ---- */
+.logout-btn {
+  position: absolute;
+  right: 16px;
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.logout-btn:hover {
+  background: rgba(255,255,255,0.15);
+}
 
 /* ---- CUP SELECTOR ---- */
 .cup-grid {
