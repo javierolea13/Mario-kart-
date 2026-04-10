@@ -1,0 +1,323 @@
+/**
+ * Mario Kart World Tracker - Main App
+ * SPA routing and event handling
+ */
+
+const App = (() => {
+  const app = document.getElementById('app');
+  let currentPage = 'dashboard';
+  let data = { players: [], tournaments: [], races: [], results: [] };
+
+  // GP Wizard state
+  let gpState = {
+    selectedPlayers: [],
+    cupName: '',
+    currentRace: 1,
+    raceResults: [{}, {}, {}, {}],  // positions for each race
+    trackNames: ['', '', '', '']
+  };
+
+  let statsTab = 'general';
+
+  // ---- INIT ----
+  async function init() {
+    data = await API.getAllData();
+    setupRouting();
+    navigate(window.location.hash.slice(1) || 'dashboard');
+  }
+
+  // ---- ROUTING ----
+  function setupRouting() {
+    window.addEventListener('hashchange', () => {
+      navigate(window.location.hash.slice(1) || 'dashboard');
+    });
+  }
+
+  function navigate(page) {
+    currentPage = page;
+    updateNav();
+    render();
+  }
+
+  function updateNav() {
+    document.querySelectorAll('.nav-item').forEach(el => {
+      el.classList.toggle('active', el.dataset.page === currentPage);
+    });
+  }
+
+  // ---- RENDER ----
+  async function render() {
+    data = API.getLocalData();
+
+    let html = '';
+
+    // Config banner on dashboard
+    if (currentPage === 'dashboard') {
+      html += UI.renderConfigBanner();
+    }
+
+    switch (currentPage) {
+      case 'dashboard':
+        html += UI.renderDashboard(data);
+        break;
+      case 'players':
+        html += UI.renderPlayers(data.players);
+        break;
+      case 'new-gp':
+        html += renderGPPage();
+        break;
+      case 'stats':
+        html += UI.renderStats(data, statsTab);
+        break;
+      case 'history':
+        html += UI.renderHistory(data);
+        break;
+      default:
+        html = UI.renderDashboard(data);
+    }
+
+    app.innerHTML = html;
+    attachEventListeners();
+  }
+
+  function renderGPPage() {
+    if (gpState.currentRace === 0) {
+      return UI.renderGPSelectPlayers(data.players);
+    } else if (gpState.currentRace <= 4) {
+      return UI.renderGPRace(
+        gpState.currentRace,
+        gpState.selectedPlayers,
+        gpState.raceResults[gpState.currentRace - 1],
+        gpState.raceResults.slice(0, gpState.currentRace - 1)
+      );
+    } else {
+      return UI.renderGPSummary(
+        gpState.selectedPlayers,
+        gpState.raceResults,
+        gpState.trackNames,
+        gpState.cupName
+      );
+    }
+  }
+
+  // ---- EVENT LISTENERS ----
+  function attachEventListeners() {
+    // Config
+    const saveConfigBtn = document.getElementById('save-config-btn');
+    if (saveConfigBtn) {
+      saveConfigBtn.addEventListener('click', () => {
+        const url = document.getElementById('api-url-input').value;
+        API.setApiUrl(url);
+        render();
+      });
+    }
+
+    const syncBtn = document.getElementById('sync-btn');
+    if (syncBtn) {
+      syncBtn.addEventListener('click', async () => {
+        syncBtn.textContent = 'Sincronizando...';
+        const ok = await API.syncFromApi();
+        syncBtn.textContent = ok ? 'Listo!' : 'Error';
+        if (ok) {
+          data = API.getLocalData();
+          setTimeout(render, 500);
+        }
+      });
+    }
+
+    // Players page
+    const addPlayerBtn = document.getElementById('add-player-btn');
+    if (addPlayerBtn) {
+      addPlayerBtn.addEventListener('click', handleAddPlayer);
+      document.getElementById('player-name').addEventListener('keydown', e => {
+        if (e.key === 'Enter') handleAddPlayer();
+      });
+    }
+
+    // Color picker
+    document.querySelectorAll('#color-picker .player-dot').forEach(el => {
+      el.addEventListener('click', () => {
+        document.querySelectorAll('#color-picker .player-dot').forEach(d => {
+          d.style.borderColor = 'transparent';
+          d.classList.remove('selected');
+        });
+        el.style.borderColor = 'white';
+        el.classList.add('selected');
+      });
+    });
+
+    // Delete player
+    document.querySelectorAll('.delete-player-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        await API.deletePlayer(id);
+        render();
+      });
+    });
+
+    // GP: Player selection
+    document.querySelectorAll('#player-chips .player-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        chip.classList.toggle('selected');
+        updateStartGPButton();
+      });
+    });
+
+    // GP: Start GP
+    const startGPBtn = document.getElementById('start-gp-btn');
+    if (startGPBtn) {
+      startGPBtn.addEventListener('click', () => {
+        const selected = document.querySelectorAll('#player-chips .player-chip.selected');
+        gpState.selectedPlayers = Array.from(selected).map(chip => {
+          const pid = chip.dataset.id;
+          return data.players.find(p => p.player_id === pid);
+        }).filter(Boolean);
+        gpState.cupName = document.getElementById('cup-name').value;
+        gpState.currentRace = 1;
+        gpState.raceResults = [{}, {}, {}, {}];
+        gpState.trackNames = ['', '', '', ''];
+        render();
+      });
+    }
+
+    // GP: Position buttons
+    document.querySelectorAll('.position-btn:not(.taken)').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const playerId = btn.dataset.player;
+        const pos = parseInt(btn.dataset.pos);
+        const raceIdx = gpState.currentRace - 1;
+
+        // If clicking same position, deselect
+        if (gpState.raceResults[raceIdx][playerId] === pos) {
+          delete gpState.raceResults[raceIdx][playerId];
+        } else {
+          gpState.raceResults[raceIdx][playerId] = pos;
+        }
+        render();
+      });
+    });
+
+    // GP: Next race
+    const nextRaceBtn = document.getElementById('next-race-btn');
+    if (nextRaceBtn) {
+      nextRaceBtn.addEventListener('click', () => {
+        const trackInput = document.getElementById('track-name');
+        gpState.trackNames[gpState.currentRace - 1] = trackInput.value || `Pista ${gpState.currentRace}`;
+        gpState.currentRace++;
+        render();
+      });
+    }
+
+    // GP: Save
+    const saveGPBtn = document.getElementById('save-gp-btn');
+    if (saveGPBtn) {
+      saveGPBtn.addEventListener('click', async () => {
+        saveGPBtn.textContent = 'Guardando...';
+        saveGPBtn.disabled = true;
+
+        const gpData = {
+          date: new Date().toISOString().split('T')[0],
+          cup_name: gpState.cupName || 'Grand Prix',
+          player_ids: gpState.selectedPlayers.map(p => p.player_id),
+          races: gpState.trackNames.map((track, i) => ({
+            track_name: track,
+            results: gpState.selectedPlayers.map(p => ({
+              player_id: p.player_id,
+              position: gpState.raceResults[i][p.player_id] || 12
+            }))
+          }))
+        };
+
+        await API.saveGrandPrix(gpData);
+
+        // Reset state
+        gpState = {
+          selectedPlayers: [],
+          cupName: '',
+          currentRace: 0,
+          raceResults: [{}, {}, {}, {}],
+          trackNames: ['', '', '', '']
+        };
+
+        window.location.hash = '#dashboard';
+      });
+    }
+
+    // GP: Discard
+    const discardBtn = document.getElementById('discard-gp-btn');
+    if (discardBtn) {
+      discardBtn.addEventListener('click', () => {
+        gpState = {
+          selectedPlayers: [],
+          cupName: '',
+          currentRace: 0,
+          raceResults: [{}, {}, {}, {}],
+          trackNames: ['', '', '', '']
+        };
+        render();
+      });
+    }
+
+    // Stats tabs
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        statsTab = tab.dataset.tab;
+        render();
+      });
+    });
+
+    // History expand
+    document.querySelectorAll('.history-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const tid = item.dataset.tournament;
+        const detail = document.getElementById('detail-' + tid);
+        if (detail) detail.classList.toggle('show');
+      });
+    });
+  }
+
+  function handleAddPlayer() {
+    const nameInput = document.getElementById('player-name');
+    const name = nameInput.value.trim();
+    if (!name) return;
+
+    const selectedColor = document.querySelector('#color-picker .player-dot.selected');
+    const color = selectedColor ? selectedColor.dataset.color : '#E52521';
+
+    API.addPlayer(name, color);
+    render();
+  }
+
+  function updateStartGPButton() {
+    const selected = document.querySelectorAll('#player-chips .player-chip.selected');
+    const btn = document.getElementById('start-gp-btn');
+    if (btn) {
+      btn.disabled = selected.length < 2 || selected.length > 4;
+      btn.textContent = selected.length > 0
+        ? `Iniciar Grand Prix (${selected.length} jugadores)`
+        : 'Iniciar Grand Prix';
+    }
+  }
+
+  // Reset GP state when navigating to new-gp
+  window.addEventListener('hashchange', () => {
+    if (window.location.hash === '#new-gp' && gpState.currentRace > 4) {
+      gpState = {
+        selectedPlayers: [],
+        cupName: '',
+        currentRace: 0,
+        raceResults: [{}, {}, {}, {}],
+        trackNames: ['', '', '', '']
+      };
+    }
+    // Initialize GP wizard at player selection
+    if (window.location.hash === '#new-gp' && gpState.selectedPlayers.length === 0) {
+      gpState.currentRace = 0;
+    }
+  });
+
+  return { init };
+})();
+
+// Start the app
+document.addEventListener('DOMContentLoaded', App.init);

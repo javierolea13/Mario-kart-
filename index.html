@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mario Kart World Tracker</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-content">
+      <h1 class="logo">🏎️ MK World Tracker</h1>
+    </div>
+  </header>
+
+  <main id="app">
+    <!-- Content rendered by JS -->
+    <div class="loading">Cargando...</div>
+  </main>
+
+  <nav class="bottom-nav">
+    <a href="#dashboard" class="nav-item active" data-page="dashboard">
+      <span class="nav-icon">🏆</span>
+      <span class="nav-label">Ranking</span>
+    </a>
+    <a href="#players" class="nav-item" data-page="players">
+      <span class="nav-icon">👥</span>
+      <span class="nav-label">Jugadores</span>
+    </a>
+    <a href="#new-gp" class="nav-item nav-item-main" data-page="new-gp">
+      <span class="nav-icon">🏁</span>
+      <span class="nav-label">Nuevo GP</span>
+    </a>
+    <a href="#stats" class="nav-item" data-page="stats">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">Stats</span>
+    </a>
+    <a href="#history" class="nav-item" data-page="history">
+      <span class="nav-icon">📋</span>
+      <span class="nav-label">Historial</span>
+    </a>
+  </nav>
+
+  <!-- Modal overlay -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div id="modal-content" class="modal-content"></div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/stats.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
