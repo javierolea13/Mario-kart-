@@ -22,9 +22,20 @@ const App = (() => {
 
   // ---- INIT ----
   async function init() {
-    data = await API.getAllData();
+    // Load local data instantly, then sync in background
+    data = API.getLocalData();
     setupRouting();
     navigate(window.location.hash.slice(1) || 'dashboard');
+
+    // Sync from API in background (don't block UI)
+    if (API.isConfigured()) {
+      API.syncFromApi().then(ok => {
+        if (ok) {
+          data = API.getLocalData();
+          render();
+        }
+      });
+    }
   }
 
   // ---- ROUTING ----
