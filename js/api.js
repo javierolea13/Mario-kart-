@@ -131,6 +131,16 @@ const API = (() => {
   async function deletePlayer(playerId) {
     const data = getLocalData();
     data.players = data.players.filter(p => p.player_id !== playerId);
+    data.results = data.results.filter(r => r.player_id !== playerId);
+    // Remove tournaments where this was the only player or update player_ids
+    data.tournaments = data.tournaments.map(t => {
+      const pids = typeof t.player_ids === 'string' ? t.player_ids.split(',') : [];
+      const filtered = pids.filter(id => id !== playerId);
+      return { ...t, player_ids: filtered.join(',') };
+    }).filter(t => {
+      const pids = typeof t.player_ids === 'string' ? t.player_ids.split(',').filter(Boolean) : [];
+      return pids.length > 0;
+    });
     saveLocalData(data);
     await fetchFromApi('deletePlayer', { playerId });
   }
