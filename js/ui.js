@@ -64,9 +64,9 @@ const UI = (() => {
           <div class="ranking-avatar" style="background:${r.player.avatar_color}">${getInitial(r.player.name)}</div>
           <div class="ranking-info">
             <div class="ranking-name">${r.player.name}</div>
-            <div class="ranking-meta">${r.gpsPlayed} GPs | Prom: ${r.avgPosition} pos | Win: ${r.winRate}%</div>
+            <div class="ranking-meta">${r.gpsPlayed} GPs | ${r.rivalsCount} rivales | Win: ${r.winRate}%</div>
           </div>
-          <div class="ranking-points">${r.totalPoints}</div>
+          <div class="ranking-points">${r.avgPerGP}<span style="font-size:0.6rem;color:var(--text-muted)"> pts/GP</span></div>
         </li>
       `;
     }).join('');
@@ -191,7 +191,7 @@ const UI = (() => {
     `;
   }
 
-  function renderGPRace(raceNum, selectedPlayers, currentResults, allRaceResults, selectedCup) {
+  function renderGPRace(raceNum, selectedPlayers, currentResults, allRaceResults, selectedCup, predictions) {
     // Calculate running totals from previous races
     const runningTotals = {};
     selectedPlayers.forEach(p => { runningTotals[p.player_id] = 0; });
@@ -256,6 +256,7 @@ const UI = (() => {
     return `
       <div class="section-header">🏁 Carrera ${raceNum} de 4</div>
       <div class="wizard-progress">${steps}</div>
+      ${raceNum === 1 && predictions ? renderPredictions(predictions) : ''}
       <div class="card">
         <div class="form-group">
           <label class="form-label">Nombre de la pista</label>
@@ -399,40 +400,56 @@ const UI = (() => {
   }
 
   function renderGeneralStats(rankings) {
-    const rows = rankings.map(r => `
+    const rows = rankings.map(r => {
+      const cupRows = (r.cupStatsArr || []).map(c => `
+        <div class="track-stat">
+          <div class="track-name">${c.cup}</div>
+          <div class="flex gap-8 items-center">
+            <span class="text-muted" style="font-size:0.75rem">${c.timesPlayed}x</span>
+            <span class="track-avg">${c.avgPoints} pts/GP</span>
+          </div>
+        </div>
+      `).join('');
+
+      return `
       <div class="card">
         <div class="flex items-center gap-8 mb-8">
           <div class="ranking-avatar" style="background:${r.player.avatar_color};width:32px;height:32px;font-size:0.85rem">${getInitial(r.player.name)}</div>
           <strong>${r.player.name}</strong>
+          <span class="text-muted" style="margin-left:auto;font-size:0.75rem">${r.rivalsCount} rivales</span>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
           <div>
-            <div class="text-muted" style="font-size:0.7rem">CARRERAS</div>
-            <div style="font-weight:800">${r.totalRaces}</div>
-          </div>
-          <div>
-            <div class="text-muted" style="font-size:0.7rem">GPs</div>
+            <div class="text-muted" style="font-size:0.65rem">GPs JUGADOS</div>
             <div style="font-weight:800">${r.gpsPlayed}</div>
           </div>
           <div>
-            <div class="text-muted" style="font-size:0.7rem">TOTAL PTS</div>
-            <div style="font-weight:800;color:var(--yellow)">${r.totalPoints}</div>
+            <div class="text-muted" style="font-size:0.65rem">PROM PTS/GP</div>
+            <div style="font-weight:800;color:var(--yellow)">${r.avgPerGP}</div>
           </div>
           <div>
-            <div class="text-muted" style="font-size:0.7rem">WIN%</div>
+            <div class="text-muted" style="font-size:0.65rem">PROM LUGAR</div>
+            <div style="font-weight:800">${r.avgPosition}o</div>
+          </div>
+          <div>
+            <div class="text-muted" style="font-size:0.65rem">WIN%</div>
             <div style="font-weight:800;color:var(--green)">${r.winRate}%</div>
           </div>
           <div>
-            <div class="text-muted" style="font-size:0.7rem">PODIO%</div>
+            <div class="text-muted" style="font-size:0.65rem">PODIO%</div>
             <div style="font-weight:800;color:var(--blue)">${r.podiumRate}%</div>
           </div>
           <div>
-            <div class="text-muted" style="font-size:0.7rem">PROM POS</div>
-            <div style="font-weight:800">${r.avgPosition}</div>
+            <div class="text-muted" style="font-size:0.65rem">TOTAL PTS</div>
+            <div style="font-weight:800">${r.totalPoints}</div>
           </div>
         </div>
+        ${cupRows ? `<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:8px">
+          <div class="text-muted" style="font-size:0.7rem;margin-bottom:4px">PROMEDIO POR COPA</div>
+          ${cupRows}
+        </div>` : ''}
       </div>
-    `).join('');
+    `}).join('');
 
     return rows;
   }
@@ -654,6 +671,33 @@ const UI = (() => {
     `;
   }
 
+  // ---- PREDICTIONS ----
+  function renderPredictions(predictions) {
+    if (!predictions || predictions.length === 0) return '';
+
+    const rows = predictions.map((p, i) => {
+      const trendIcon = p.trend === 'up' ? '📈' : p.trend === 'down' ? '📉' : '➡️';
+      const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}o`;
+      return `
+        <div class="ranking-item">
+          <div class="ranking-position">${medal}</div>
+          <div class="ranking-avatar" style="background:${p.color || '#666'};width:32px;height:32px;font-size:0.8rem">${getInitial(p.name)}</div>
+          <div class="ranking-info">
+            <div class="ranking-name">${p.name} ${trendIcon}</div>
+            <div class="ranking-meta">${p.avgPerGP} pts/GP prom | ${p.gpsPlayed} GPs</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="card" style="border-color:var(--purple)">
+        <div class="card-title">🔮 Prediccion</div>
+        <div class="ranking-list">${rows}</div>
+      </div>
+    `;
+  }
+
   return {
     renderLogin,
     renderDashboard,
@@ -664,6 +708,7 @@ const UI = (() => {
     renderStats,
     renderHistory,
     renderConfigBanner,
+    renderPredictions,
     COLORS
   };
 })();

@@ -27,16 +27,23 @@ const Stats = (() => {
   function computeRankings(players, results, tournaments) {
     const stats = {};
 
+    // Build tournament map for cup names
+    const tournamentMap = {};
+    tournaments.forEach(t => { tournamentMap[t.tournament_id] = t; });
+
     players.forEach(p => {
       stats[p.player_id] = {
         player: p,
         totalPoints: 0,
         totalRaces: 0,
         gpsPlayed: new Set(),
-        wins: 0,       // 1st place
-        podiums: 0,     // top 3
-        topFive: 0,     // top 5
-        positions: []
+        gpPoints: {},    // tournament_id -> total points in that GP
+        wins: 0,         // 1st place in a race
+        podiums: 0,      // top 3
+        topFive: 0,      // top 5
+        positions: [],
+        rivals: new Set(), // player IDs they've raced against
+        cupStats: {}     // cup_name -> { points, races, gps }
       };
     });
 
@@ -44,12 +51,30 @@ const Stats = (() => {
       const s = stats[r.player_id];
       if (!s) return;
       const pts = typeof r.points === 'number' ? r.points : parseInt(r.points) || 0;
-      const pos = typeof r.position === 'number' ? r.position : parseInt(r.position) || 12;
+      const pos = typeof r.position === 'number' ? r.position : parseInt(r.position) || 24;
 
       s.totalPoints += pts;
       s.totalRaces++;
       s.gpsPlayed.add(r.tournament_id);
       s.positions.push(pos);
+
+      // Track points per GP
+      if (!s.gpPoints[r.tournament_id]) s.gpPoints[r.tournament_id] = 0;
+      s.gpPoints[r.tournament_id] += pts;
+
+      // Track rivals in same tournament
+      const tournament = tournamentMap[r.tournament_id];
+      if (tournament) {
+        const pids = typeof tournament.player_ids === 'string' ? tournament.player_ids.split(',') : [];
+        pids.forEach(pid => { if (pid !== r.player_id) s.rivals.add(pid); });
+
+        // Cup stats
+        const cupName = tournament.cup_name || 'Sin copa';
+        if (!s.cupStats[cupName]) s.cupStats[cupName] = { points: 0, races: 0, gps: new Set() };
+        s.cupStats[cupName].points += pts;
+        s.cupStats[cupName].races++;
+        s.cupStats[cupName].gps.add(r.tournament_id);
+      }
 
       if (pos === 1) s.wins++;
       if (pos <= 3) s.podiums++;
@@ -58,16 +83,30 @@ const Stats = (() => {
 
     return Object.values(stats)
       .filter(s => s.totalRaces > 0)
-      .map(s => ({
-        ...s,
-        gpsPlayed: s.gpsPlayed.size,
-        avgPoints: s.totalRaces > 0 ? (s.totalPoints / s.totalRaces).toFixed(1) : '0',
-        avgPosition: s.totalRaces > 0 ? (s.positions.reduce((a, b) => a + b, 0) / s.positions.length).toFixed(1) : '-',
-        winRate: s.totalRaces > 0 ? ((s.wins / s.totalRaces) * 100).toFixed(1) : '0',
-        podiumRate: s.totalRaces > 0 ? ((s.podiums / s.totalRaces) * 100).toFixed(1) : '0',
-        avgPerGP: s.gpsPlayed.size > 0 ? (s.totalPoints / s.gpsPlayed.size).toFixed(1) : '0'
-      }))
-      .sort((a, b) => b.totalPoints - a.totalPoints);
+      .map(s => {
+        const gpPointsArr = Object.values(s.gpPoints);
+        const avgPerGP = gpPointsArr.length > 0 ? (gpPointsArr.reduce((a, b) => a + b, 0) / gpPointsArr.length) : 0;
+
+        // Convert cup stats
+        const cupStatsArr = Object.entries(s.cupStats).map(([name, data]) => ({
+          cup: name,
+          avgPoints: (data.points / data.gps.size).toFixed(1),
+          timesPlayed: data.gps.size
+        })).sort((a, b) => parseFloat(b.avgPoints) - parseFloat(a.avgPoints));
+
+        return {
+          ...s,
+          gpsPlayed: s.gpsPlayed.size,
+          avgPointsPerRace: s.totalRaces > 0 ? (s.totalPoints / s.totalRaces).toFixed(1) : '0',
+          avgPosition: s.totalRaces > 0 ? (s.positions.reduce((a, b) => a + b, 0) / s.positions.length).toFixed(1) : '-',
+          winRate: s.totalRaces > 0 ? ((s.wins / s.totalRaces) * 100).toFixed(1) : '0',
+          podiumRate: s.totalRaces > 0 ? ((s.podiums / s.totalRaces) * 100).toFixed(1) : '0',
+          avgPerGP: avgPerGP.toFixed(1),
+          rivalsCount: s.rivals.size,
+          cupStatsArr
+        };
+      })
+      .sort((a, b) => parseFloat(b.avgPerGP) - parseFloat(a.avgPerGP));
   }
 
   // ---- HEAD TO HEAD ----
@@ -285,9 +324,45 @@ const Stats = (() => {
       .sort((a, b) => b.totalPoints - a.totalPoints);
   }
 
+  // ---- PREDICTIONS ----
+  function getPredictions(data, selectedPlayerIds) {
+    const allStats = computeAll(data);
+    if (!allStats || !allStats.rankings.length) return null;
+
+    const predictions = selectedPlayerIds.map(pid => {
+      const ranking = allStats.rankings.find(r => r.player.player_id === pid);
+      if (!ranking) return { player_id: pid, name: '??', avgPerGP: 0, avgPos: 24, trend: 'neutral' };
+
+      // Check recent trend (last 3 GPs)
+      const recentPositions = ranking.positions.slice(-12); // last ~3 GPs worth
+      const oldPositions = ranking.positions.slice(0, -12);
+      const recentAvg = recentPositions.length > 0 ? recentPositions.reduce((a,b) => a+b, 0) / recentPositions.length : 24;
+      const oldAvg = oldPositions.length > 0 ? oldPositions.reduce((a,b) => a+b, 0) / oldPositions.length : 24;
+      let trend = 'neutral';
+      if (recentPositions.length >= 4 && oldPositions.length >= 4) {
+        if (recentAvg < oldAvg - 1) trend = 'up';
+        else if (recentAvg > oldAvg + 1) trend = 'down';
+      }
+
+      return {
+        player_id: pid,
+        name: ranking.player.name,
+        color: ranking.player.avatar_color,
+        avgPerGP: parseFloat(ranking.avgPerGP),
+        avgPos: parseFloat(ranking.avgPosition),
+        winRate: parseFloat(ranking.winRate),
+        gpsPlayed: ranking.gpsPlayed,
+        trend
+      };
+    }).sort((a, b) => b.avgPerGP - a.avgPerGP);
+
+    return predictions;
+  }
+
   return {
     computeAll,
     computeRankings,
-    getGPStandings
+    getGPStandings,
+    getPredictions
   };
 })();

@@ -17,9 +17,11 @@ const MK_CUPS = [
 const API = (() => {
   const CONFIG_KEY = 'mktracker_api_url';
   const CACHE_KEY = 'mktracker_data';
+  // Default API URL (so other devices connect automatically)
+  const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbzCIXs4kIyfiAx5WdAdjHG6VNy3UhvbcOvdsLxIhc42XxSBPDlIma8HsUcjJTopBBWigw/exec';
 
   function getApiUrl() {
-    return localStorage.getItem(CONFIG_KEY) || '';
+    return localStorage.getItem(CONFIG_KEY) || DEFAULT_API_URL;
   }
 
   function setApiUrl(url) {

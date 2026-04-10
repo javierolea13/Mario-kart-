@@ -54,7 +54,13 @@ const App = (() => {
       localStorage.setItem(AUTH_KEY, JSON.stringify(user));
       document.querySelector('.bottom-nav').style.display = 'flex';
       document.querySelector('.app-header').style.display = 'flex';
+      data = API.getLocalData();
+      setupRouting();
       navigate(window.location.hash.slice(1) || 'dashboard');
+      // Sync in background
+      if (API.isConfigured()) {
+        API.syncFromApi().then(ok => { if (ok) { data = API.getLocalData(); render(); } });
+      }
     } else {
       const err = document.getElementById('login-error');
       err.style.display = 'block';
@@ -184,7 +190,8 @@ const App = (() => {
         gpState.selectedPlayers,
         gpState.raceResults[gpState.currentRace - 1],
         gpState.raceResults.slice(0, gpState.currentRace - 1),
-        gpState.selectedCup
+        gpState.selectedCup,
+        gpState.predictions
       );
     } else {
       return UI.renderGPSummary(
@@ -325,6 +332,11 @@ const App = (() => {
         if (cupNameInput && !gpState.selectedCup) {
           gpState.cupName = cupNameInput.value || 'Copa Personalizada';
         }
+        // Show predictions before starting
+        const playerIds = gpState.selectedPlayers.map(p => p.player_id);
+        const predictions = Stats.getPredictions(data, playerIds);
+        gpState.predictions = predictions;
+
         gpState.currentRace = 1;
         gpState.raceResults = [{}, {}, {}, {}];
         if (!gpState.selectedCup) {
