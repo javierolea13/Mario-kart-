@@ -12,6 +12,7 @@ const App = (() => {
   let gpState = {
     selectedPlayers: [],
     cupName: '',
+    selectedCup: null, // { name, tracks[], emoji } or null for custom
     currentRace: 1,
     raceResults: [{}, {}, {}, {}],  // positions for each race
     trackNames: ['', '', '', '']
@@ -88,7 +89,8 @@ const App = (() => {
         gpState.currentRace,
         gpState.selectedPlayers,
         gpState.raceResults[gpState.currentRace - 1],
-        gpState.raceResults.slice(0, gpState.currentRace - 1)
+        gpState.raceResults.slice(0, gpState.currentRace - 1),
+        gpState.selectedCup
       );
     } else {
       return UI.renderGPSummary(
@@ -163,6 +165,53 @@ const App = (() => {
       });
     });
 
+    // GP: Cup selection
+    document.querySelectorAll('#cup-grid .cup-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const cupId = btn.dataset.cupId;
+
+        // Deselect all
+        document.querySelectorAll('#cup-grid .cup-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+
+        const customInput = document.getElementById('custom-cup-input');
+        const cupPreview = document.getElementById('cup-preview');
+
+        if (cupId === 'random') {
+          const randomCup = MK_CUPS[Math.floor(Math.random() * MK_CUPS.length)];
+          gpState.selectedCup = randomCup;
+          gpState.cupName = randomCup.name;
+          gpState.trackNames = [...randomCup.tracks];
+          if (customInput) customInput.style.display = 'none';
+          if (cupPreview) {
+            cupPreview.style.display = 'block';
+            cupPreview.innerHTML = `<div class="cup-preview-title">${randomCup.emoji} ${randomCup.name}</div>` +
+              randomCup.tracks.map((t, i) => `<div class="cup-preview-track">${i + 1}. ${t}</div>`).join('');
+          }
+        } else if (cupId === 'custom') {
+          gpState.selectedCup = null;
+          gpState.cupName = '';
+          gpState.trackNames = ['', '', '', ''];
+          if (customInput) customInput.style.display = 'block';
+          if (cupPreview) cupPreview.style.display = 'none';
+        } else {
+          const cup = MK_CUPS.find(c => c.id === cupId);
+          if (cup) {
+            gpState.selectedCup = cup;
+            gpState.cupName = cup.name;
+            gpState.trackNames = [...cup.tracks];
+            if (customInput) customInput.style.display = 'none';
+            if (cupPreview) {
+              cupPreview.style.display = 'block';
+              cupPreview.innerHTML = `<div class="cup-preview-title">${cup.emoji} ${cup.name}</div>` +
+                cup.tracks.map((t, i) => `<div class="cup-preview-track">${i + 1}. ${t}</div>`).join('');
+            }
+          }
+        }
+        updateStartGPButton();
+      });
+    });
+
     // GP: Start GP
     const startGPBtn = document.getElementById('start-gp-btn');
     if (startGPBtn) {
@@ -172,10 +221,15 @@ const App = (() => {
           const pid = chip.dataset.id;
           return data.players.find(p => p.player_id === pid);
         }).filter(Boolean);
-        gpState.cupName = document.getElementById('cup-name').value;
+        const cupNameInput = document.getElementById('cup-name');
+        if (cupNameInput && !gpState.selectedCup) {
+          gpState.cupName = cupNameInput.value || 'Copa Personalizada';
+        }
         gpState.currentRace = 1;
         gpState.raceResults = [{}, {}, {}, {}];
-        gpState.trackNames = ['', '', '', ''];
+        if (!gpState.selectedCup) {
+          gpState.trackNames = ['', '', '', ''];
+        }
         render();
       });
     }
@@ -234,6 +288,7 @@ const App = (() => {
         gpState = {
           selectedPlayers: [],
           cupName: '',
+          selectedCup: null,
           currentRace: 0,
           raceResults: [{}, {}, {}, {}],
           trackNames: ['', '', '', '']
@@ -250,6 +305,7 @@ const App = (() => {
         gpState = {
           selectedPlayers: [],
           cupName: '',
+          selectedCup: null,
           currentRace: 0,
           raceResults: [{}, {}, {}, {}],
           trackNames: ['', '', '', '']
@@ -290,9 +346,12 @@ const App = (() => {
 
   function updateStartGPButton() {
     const selected = document.querySelectorAll('#player-chips .player-chip.selected');
+    const cupSelected = document.querySelector('#cup-grid .cup-btn.selected');
     const btn = document.getElementById('start-gp-btn');
     if (btn) {
-      btn.disabled = selected.length < 2 || selected.length > 4;
+      const hasPlayers = selected.length >= 2 && selected.length <= 4;
+      const hasCup = !!cupSelected;
+      btn.disabled = !hasPlayers || !hasCup;
       btn.textContent = selected.length > 0
         ? `Iniciar Grand Prix (${selected.length} jugadores)`
         : 'Iniciar Grand Prix';

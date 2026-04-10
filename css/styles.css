@@ -803,6 +803,95 @@ select.form-input {
 .badge-silver { background: rgba(192,192,192,0.2); color: #C0C0C0; }
 .badge-bronze { background: rgba(205,127,50,0.2); color: #CD7F32; }
 
+/* ---- CUP SELECTOR ---- */
+.cup-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.cup-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  background: var(--bg-input);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: 'Nunito', sans-serif;
+}
+
+.cup-btn:active {
+  transform: scale(0.95);
+}
+
+.cup-btn.selected {
+  border-color: var(--yellow);
+  background: rgba(251,208,0,0.12);
+}
+
+.cup-emoji {
+  font-size: 1.5rem;
+}
+
+.cup-name {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.cup-btn-random {
+  border-color: var(--purple);
+}
+
+.cup-btn-random.selected {
+  border-color: var(--purple);
+  background: rgba(123,94,167,0.15);
+}
+
+.cup-btn-custom {
+  border-color: var(--text-muted);
+}
+
+.cup-btn-custom.selected {
+  border-color: var(--blue);
+  background: rgba(4,156,216,0.12);
+}
+
+.cup-preview {
+  background: var(--bg-input);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+
+.cup-preview-title {
+  font-weight: 800;
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+  color: var(--yellow);
+}
+
+.cup-preview-track {
+  font-size: 0.8rem;
+  padding: 3px 0;
+  color: var(--text-muted);
+}
+
+.track-preset {
+  padding: 12px 16px;
+  background: var(--bg-input);
+  border: 1px solid var(--yellow);
+  border-radius: var(--radius-sm);
+  color: var(--yellow);
+  font-weight: 700;
+  font-size: 1rem;
+}
+
 /* ---- RESPONSIVE ---- */
 @media (min-width: 768px) {
   .bottom-nav {

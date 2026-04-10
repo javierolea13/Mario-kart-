@@ -137,18 +137,38 @@ const UI = (() => {
       <div class="card">
         <div class="card-title">Selecciona jugadores (2-4)</div>
         <div class="flex flex-wrap gap-8 mb-16" id="player-chips">${chips}</div>
-        <div class="form-group">
-          <label class="form-label">Nombre de la copa (opcional)</label>
-          <input type="text" id="cup-name" class="form-input" placeholder="Ej: Copa Champi, Copa Estrella...">
+      </div>
+      <div class="card">
+        <div class="card-title">Selecciona la copa</div>
+        <div class="cup-grid" id="cup-grid">
+          ${MK_CUPS.map(cup => `
+            <button class="cup-btn" data-cup-id="${cup.id}">
+              <span class="cup-emoji">${cup.emoji}</span>
+              <span class="cup-name">${cup.name}</span>
+            </button>
+          `).join('')}
+          <button class="cup-btn cup-btn-random" data-cup-id="random">
+            <span class="cup-emoji">🎲</span>
+            <span class="cup-name">Aleatoria</span>
+          </button>
+          <button class="cup-btn cup-btn-custom" data-cup-id="custom">
+            <span class="cup-emoji">✏️</span>
+            <span class="cup-name">Personalizada</span>
+          </button>
         </div>
-        <button id="start-gp-btn" class="btn btn-primary btn-block" disabled>
+        <div id="custom-cup-input" class="form-group mt-16" style="display:none">
+          <label class="form-label">Nombre de la copa</label>
+          <input type="text" id="cup-name" class="form-input" placeholder="Ej: Mi Copa Custom...">
+        </div>
+        <div id="cup-preview" class="cup-preview mt-8" style="display:none"></div>
+        <button id="start-gp-btn" class="btn btn-primary btn-block mt-16" disabled>
           Iniciar Grand Prix
         </button>
       </div>
     `;
   }
 
-  function renderGPRace(raceNum, selectedPlayers, currentResults, allRaceResults) {
+  function renderGPRace(raceNum, selectedPlayers, currentResults, allRaceResults, selectedCup) {
     // Calculate running totals from previous races
     const runningTotals = {};
     selectedPlayers.forEach(p => { runningTotals[p.player_id] = 0; });
@@ -216,8 +236,13 @@ const UI = (() => {
       <div class="card">
         <div class="form-group">
           <label class="form-label">Nombre de la pista</label>
-          <input type="text" id="track-name" class="form-input" placeholder="Ej: Circuito de Mario, Playa Koopa..."
-                 value="${''}" autocomplete="off">
+          ${selectedCup && selectedCup.tracks ? `
+            <div class="track-preset">${selectedCup.tracks[raceNum - 1] || 'Pista ' + raceNum}</div>
+            <input type="hidden" id="track-name" value="${selectedCup.tracks[raceNum - 1] || ''}">
+          ` : `
+            <input type="text" id="track-name" class="form-input" placeholder="Ej: Circuito de Mario, Playa Koopa..."
+                   value="" autocomplete="off">
+          `}
         </div>
         ${playerSections}
         <div class="race-points-live">${liveScores}</div>

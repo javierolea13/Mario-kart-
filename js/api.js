@@ -3,6 +3,17 @@
  * Comunicacion con Google Apps Script + localStorage fallback
  */
 
+const MK_CUPS = [
+  { id: 'mushroom', emoji: '🍄', name: 'Mushroom Cup', tracks: ['Mario Bros. Circuit', 'Crown City', 'Whistlestop Summit', 'DK Spaceport'] },
+  { id: 'flower',   emoji: '🌸', name: 'Flower Cup',   tracks: ['Desert Hills', 'Shy Guy Bazaar', 'Wario Stadium', 'Airship Fortress'] },
+  { id: 'star',     emoji: '⭐', name: 'Star Cup',     tracks: ['DK Pass', 'Starview Peak', 'Sky-High Sundae', 'Wario Shipyard'] },
+  { id: 'shell',    emoji: '🐚', name: 'Shell Cup',    tracks: ['Koopa Troopa Beach', 'Faraway Oasis', 'Crown City', 'Peach Stadium'] },
+  { id: 'banana',   emoji: '🍌', name: 'Banana Cup',   tracks: ['Peach Beach', 'Salty Salty Speedway', 'Dino Dino Jungle', 'Great ? Block Ruins'] },
+  { id: 'leaf',     emoji: '🍃', name: 'Leaf Cup',     tracks: ['Cheep Cheep Falls', 'Dandelion Depths', 'Boo Cinema', 'Dry Bones Burnout'] },
+  { id: 'lightning', emoji: '⚡', name: 'Lightning Cup', tracks: ['Moo Moo Meadows', 'Choco Mountain', "Toad's Factory", "Bowser's Castle"] },
+  { id: 'special',  emoji: '👑', name: 'Special Cup',  tracks: ['Acorn Heights', 'Mario Circuit', 'Peach Stadium', 'Rainbow Road'] }
+];
+
 const API = (() => {
   const CONFIG_KEY = 'mktracker_api_url';
   const CACHE_KEY = 'mktracker_data';
