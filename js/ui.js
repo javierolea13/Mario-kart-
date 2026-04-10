@@ -191,7 +191,7 @@ const UI = (() => {
 
     const playerSections = selectedPlayers.map(p => {
       const currentPos = currentResults[p.player_id];
-      const buttons = Array.from({ length: 12 }, (_, i) => i + 1).map(pos => {
+      const buttons = Array.from({ length: 24 }, (_, i) => i + 1).map(pos => {
         const isSelected = currentPos === pos;
         const isTaken = takenPositions.includes(pos) && !isSelected;
         return `<button class="position-btn ${isSelected ? 'selected' : ''} ${isTaken ? 'taken' : ''}"
