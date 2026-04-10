@@ -434,6 +434,17 @@ const App = (() => {
       });
     });
 
+    // H2H expand/collapse
+    document.querySelectorAll('.h2h-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const idx = card.dataset.h2hIdx;
+        const detail = document.getElementById('h2h-detail-' + idx);
+        if (detail) {
+          detail.style.display = detail.style.display === 'none' ? 'block' : 'none';
+        }
+      });
+    });
+
     // History expand
     document.querySelectorAll('.history-item').forEach(item => {
       item.addEventListener('click', () => {

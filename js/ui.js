@@ -459,19 +459,43 @@ const UI = (() => {
       return '<div class="empty-state"><div class="empty-state-text">No hay datos head-to-head</div></div>';
     }
 
-    return `<div class="card">${matchups.map(m => `
-      <div class="h2h-matchup">
-        <div class="h2h-player">
-          <span class="player-dot" style="background:${m.player1.avatar_color};width:10px;height:10px;border-radius:50%;display:inline-block"></span>
-          ${m.player1.name}
+    return matchups.map((m, idx) => {
+      const detailRows = (m.details || []).map(d => {
+        const winColor = d.winner === 'p1' ? m.player1.avatar_color : d.winner === 'p2' ? m.player2.avatar_color : 'var(--text-muted)';
+        return `
+          <div class="h2h-detail-row">
+            <div class="h2h-detail-track">${d.track}${d.cup ? ` <span class="text-muted" style="font-size:0.7rem">(${d.cup})</span>` : ''}</div>
+            <div class="h2h-detail-scores">
+              <span style="color:${d.winner === 'p1' ? 'var(--green)' : 'var(--text-muted)'};font-weight:${d.winner === 'p1' ? '800' : '400'}">${d.p1Pos}o</span>
+              <span class="text-muted">vs</span>
+              <span style="color:${d.winner === 'p2' ? 'var(--green)' : 'var(--text-muted)'};font-weight:${d.winner === 'p2' ? '800' : '400'}">${d.p2Pos}o</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      return `<div class="card h2h-card" data-h2h-idx="${idx}">
+        <div class="h2h-matchup" style="cursor:pointer">
+          <div class="h2h-player">
+            <span class="player-dot" style="background:${m.player1.avatar_color};width:10px;height:10px;border-radius:50%;display:inline-block"></span>
+            ${m.player1.name}
+          </div>
+          <div class="h2h-record">${m.p1Wins} - ${m.p2Wins}</div>
+          <div class="h2h-player" style="text-align:right">
+            ${m.player2.name}
+            <span class="player-dot" style="background:${m.player2.avatar_color};width:10px;height:10px;border-radius:50%;display:inline-block"></span>
+          </div>
         </div>
-        <div class="h2h-record">${m.p1Wins} - ${m.p2Wins}</div>
-        <div class="h2h-player" style="text-align:right">
-          ${m.player2.name}
-          <span class="player-dot" style="background:${m.player2.avatar_color};width:10px;height:10px;border-radius:50%;display:inline-block"></span>
+        <div class="text-muted text-center" style="font-size:0.7rem;margin-top:4px">${m.total} carreras | Toca para ver detalle</div>
+        <div class="h2h-details" id="h2h-detail-${idx}" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:8px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:0.75rem;font-weight:700;color:var(--text-muted)">
+            <span>Pista</span>
+            <span>${m.player1.name} vs ${m.player2.name}</span>
+          </div>
+          ${detailRows}
         </div>
-      </div>
-    `).join('')}</div>`;
+      </div>`;
+    }).join('');
   }
 
   function renderStreaks(streaks) {

@@ -600,6 +600,31 @@ select.form-input {
   color: var(--blue);
 }
 
+.h2h-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.8rem;
+}
+
+.h2h-detail-row:last-child {
+  border-bottom: none;
+}
+
+.h2h-detail-track {
+  flex: 1;
+  font-weight: 600;
+}
+
+.h2h-detail-scores {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
 /* ---- STREAKS ---- */
 .streak-card {
   display: flex;

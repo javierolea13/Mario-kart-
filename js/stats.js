@@ -17,7 +17,7 @@ const Stats = (() => {
 
     return {
       rankings: computeRankings(players, results, tournaments),
-      headToHead: computeH2H(players, results, races),
+      headToHead: computeH2H(players, results, races, tournaments),
       streaks: computeStreaks(players, results, tournaments, races),
       trackStats: computeTrackStats(players, results, races)
     };
@@ -110,7 +110,12 @@ const Stats = (() => {
   }
 
   // ---- HEAD TO HEAD ----
-  function computeH2H(players, results, races) {
+  function computeH2H(players, results, races, tournaments) {
+    const raceMap = {};
+    races.forEach(r => { raceMap[r.race_id] = r; });
+    const tournamentMap = {};
+    (tournaments || []).forEach(t => { tournamentMap[t.tournament_id] = t; });
+
     // Group results by race
     const raceResults = {};
     results.forEach(r => {
@@ -129,15 +134,21 @@ const Stats = (() => {
           p1Wins: 0,
           p2Wins: 0,
           ties: 0,
-          total: 0
+          total: 0,
+          details: [] // { track, cup, p1Pos, p2Pos, winner }
         };
       });
     });
 
-    Object.values(raceResults).forEach(raceRes => {
+    Object.entries(raceResults).forEach(([raceId, raceRes]) => {
+      const race = raceMap[raceId];
+      const trackName = race ? race.track_name : '??';
+      const tournament = race ? tournamentMap[race.tournament_id] : null;
+      const cupName = tournament ? tournament.cup_name : '';
+
       const participants = {};
       raceRes.forEach(r => {
-        participants[r.player_id] = typeof r.position === 'number' ? r.position : parseInt(r.position) || 12;
+        participants[r.player_id] = typeof r.position === 'number' ? r.position : parseInt(r.position) || 24;
       });
 
       const pIds = Object.keys(participants);
@@ -150,14 +161,25 @@ const Stats = (() => {
           h2h[key].total++;
           const posA = participants[a];
           const posB = participants[b];
+          let winner = 'tie';
 
           if (posA < posB) {
             h2h[key][a === h2h[key].player1.player_id ? 'p1Wins' : 'p2Wins']++;
+            winner = a === h2h[key].player1.player_id ? 'p1' : 'p2';
           } else if (posB < posA) {
             h2h[key][b === h2h[key].player1.player_id ? 'p1Wins' : 'p2Wins']++;
+            winner = b === h2h[key].player1.player_id ? 'p1' : 'p2';
           } else {
             h2h[key].ties++;
           }
+
+          h2h[key].details.push({
+            track: trackName,
+            cup: cupName,
+            p1Pos: a === h2h[key].player1.player_id ? posA : posB,
+            p2Pos: a === h2h[key].player1.player_id ? posB : posA,
+            winner
+          });
         }
       }
     });
