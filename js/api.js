@@ -54,8 +54,12 @@ const API = (() => {
 
     try {
       const queryParams = new URLSearchParams({ action, ...params });
-      const res = await fetch(`${url}?${queryParams}`);
-      return await res.json();
+      const res = await fetch(`${url}?${queryParams}`, {
+        redirect: 'follow',
+        headers: { 'Accept': 'application/json' }
+      });
+      const text = await res.text();
+      try { return JSON.parse(text); } catch { return null; }
     } catch (e) {
       console.warn('API call failed, using local data:', e);
       return null;
@@ -69,9 +73,12 @@ const API = (() => {
     try {
       const res = await fetch(`${url}?action=${action}`, {
         method: 'POST',
+        redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(body),
       });
-      return await res.json();
+      const text = await res.text();
+      try { return JSON.parse(text); } catch { return null; }
     } catch (e) {
       console.warn('API POST failed, using local data:', e);
       return null;
