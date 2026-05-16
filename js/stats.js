@@ -451,10 +451,111 @@ const Stats = (() => {
     return predictions;
   }
 
+  // ---- TRACK-SPECIFIC PREDICTION ----
+  // Same exponential decay but only over races on this specific track.
+  function getTrackPrediction(data, selectedPlayerIds, trackName) {
+    if (!trackName) return null;
+    const DECAY = 0.75;
+    const { players, tournaments, races, results } = data;
+
+    const playerMap = {};
+    players.forEach(p => { playerMap[p.player_id] = p; });
+
+    const tournamentMap = {};
+    tournaments.forEach(t => { tournamentMap[t.tournament_id] = t; });
+
+    const norm = s => (s || '').toString().trim().toLowerCase();
+    const target = norm(trackName);
+    const matchingRaces = races.filter(r => norm(r.track_name) === target);
+
+    if (matchingRaces.length === 0) {
+      return { trackName, timesPlayed: 0, predictions: [], allRookies: true };
+    }
+
+    const matchRaceIds = new Set(matchingRaces.map(r => r.race_id));
+    const raceToTournament = {};
+    matchingRaces.forEach(r => { raceToTournament[r.race_id] = r.tournament_id; });
+
+    const playerHistory = {};
+    selectedPlayerIds.forEach(pid => { playerHistory[pid] = []; });
+
+    results.forEach(r => {
+      if (!matchRaceIds.has(r.race_id)) return;
+      if (!selectedPlayerIds.includes(r.player_id)) return;
+      const t = tournamentMap[raceToTournament[r.race_id]];
+      const date = t ? new Date(t.date).getTime() : 0;
+      const pos = typeof r.position === 'number' ? r.position : parseInt(r.position) || 12;
+      const pts = typeof r.points === 'number' ? r.points : parseInt(r.points) || 0;
+      playerHistory[r.player_id].push({ date, position: pos, points: pts });
+    });
+
+    Object.values(playerHistory).forEach(arr => arr.sort((a, b) => a.date - b.date));
+
+    const predictions = selectedPlayerIds.map(pid => {
+      const player = playerMap[pid];
+      const history = playerHistory[pid] || [];
+
+      if (history.length === 0) {
+        return {
+          player_id: pid,
+          name: player ? player.name : '??',
+          color: player ? player.avatar_color : '#666',
+          weightedPosition: null,
+          racesOnTrack: 0,
+          bestPosition: null,
+          trend: 'neutral',
+          rookie: true
+        };
+      }
+
+      const N = history.length;
+      let wSum = 0, posSum = 0;
+      history.forEach((h, i) => {
+        const w = Math.pow(DECAY, N - 1 - i);
+        wSum += w;
+        posSum += h.position * w;
+      });
+
+      let trend = 'neutral';
+      if (N >= 4) {
+        const half = Math.floor(N / 2);
+        const older = history.slice(0, half);
+        const recent = history.slice(-half);
+        const olderAvg = older.reduce((s, h) => s + h.position, 0) / older.length;
+        const recentAvg = recent.reduce((s, h) => s + h.position, 0) / recent.length;
+        if (recentAvg < olderAvg - 0.5) trend = 'up';
+        else if (recentAvg > olderAvg + 0.5) trend = 'down';
+      }
+
+      return {
+        player_id: pid,
+        name: player ? player.name : '??',
+        color: player ? player.avatar_color : '#666',
+        weightedPosition: parseFloat((posSum / wSum).toFixed(1)),
+        racesOnTrack: N,
+        bestPosition: Math.min(...history.map(h => h.position)),
+        trend,
+        rookie: false
+      };
+    });
+
+    predictions.sort((a, b) => {
+      if (a.rookie && !b.rookie) return 1;
+      if (!a.rookie && b.rookie) return -1;
+      return a.weightedPosition - b.weightedPosition;
+    });
+
+    predictions.forEach((p, i) => { p.predictedRank = i + 1; });
+
+    const allRookies = predictions.every(p => p.rookie);
+    return { trackName, timesPlayed: matchingRaces.length, predictions, allRookies };
+  }
+
   return {
     computeAll,
     computeRankings,
     getGPStandings,
-    getPredictions
+    getPredictions,
+    getTrackPrediction
   };
 })();

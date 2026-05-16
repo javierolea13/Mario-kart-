@@ -191,7 +191,7 @@ const UI = (() => {
     `;
   }
 
-  function renderGPRace(raceNum, selectedPlayers, currentResults, allRaceResults, selectedCup, predictions) {
+  function renderGPRace(raceNum, selectedPlayers, currentResults, allRaceResults, selectedCup, predictions, trackPrediction) {
     // Calculate running totals from previous races
     const runningTotals = {};
     selectedPlayers.forEach(p => { runningTotals[p.player_id] = 0; });
@@ -256,6 +256,7 @@ const UI = (() => {
     return `
       <div class="section-header">🏁 Carrera ${raceNum} de 4</div>
       <div class="wizard-progress">${steps}</div>
+      ${trackPrediction ? renderTrackPrediction(trackPrediction) : ''}
       ${predictions ? renderPredictions(predictions) : ''}
       <div class="card">
         <div class="form-group">
@@ -727,6 +728,47 @@ const UI = (() => {
     `;
   }
 
+  // ---- TRACK-SPECIFIC PREDICTION ----
+  function renderTrackPrediction(trackData) {
+    if (!trackData || !trackData.trackName) return '';
+
+    if (trackData.allRookies || !trackData.predictions || trackData.predictions.length === 0 || trackData.timesPlayed === 0) {
+      return `
+        <div class="card" style="border-color:var(--blue)">
+          <div class="card-title">🏁 Predicción en "${trackData.trackName}"</div>
+          <div class="text-muted" style="font-size:0.8rem">Sin historial en esta pista para los jugadores seleccionados</div>
+        </div>
+      `;
+    }
+
+    const rows = trackData.predictions.map(p => {
+      const trendIcon = p.trend === 'up' ? '📈' : p.trend === 'down' ? '📉' : '➡️';
+      const rank = p.predictedRank;
+      const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}o`;
+      const meta = p.rookie
+        ? 'Nunca ha corrido aquí'
+        : `${p.weightedPosition}o lugar pond. · Mejor: ${p.bestPosition}o · ${p.racesOnTrack} carrera${p.racesOnTrack === 1 ? '' : 's'}`;
+      return `
+        <div class="ranking-item">
+          <div class="ranking-position">${medal}</div>
+          <div class="ranking-avatar" style="background:${p.color || '#666'};width:32px;height:32px;font-size:0.8rem">${getInitial(p.name)}</div>
+          <div class="ranking-info">
+            <div class="ranking-name">${p.name} ${trendIcon}</div>
+            <div class="ranking-meta">${meta}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="card" style="border-color:var(--blue)">
+        <div class="card-title">🏁 Predicción en "${trackData.trackName}"</div>
+        <div class="text-muted" style="font-size:0.7rem;margin-bottom:8px">${trackData.timesPlayed} carrera${trackData.timesPlayed === 1 ? '' : 's'} previa${trackData.timesPlayed === 1 ? '' : 's'} en esta pista · recientes pesan más</div>
+        <div class="ranking-list">${rows}</div>
+      </div>
+    `;
+  }
+
   return {
     renderLogin,
     renderDashboard,
@@ -738,6 +780,7 @@ const UI = (() => {
     renderHistory,
     renderConfigBanner,
     renderPredictions,
+    renderTrackPrediction,
     COLORS
   };
 })();

@@ -185,13 +185,22 @@ const App = (() => {
     if (gpState.currentRace === 0) {
       return UI.renderGPSelectPlayers(data.players);
     } else if (gpState.currentRace <= 4) {
+      const idx = gpState.currentRace - 1;
+      const currentTrackName = (gpState.selectedCup && gpState.selectedCup.tracks)
+        ? gpState.selectedCup.tracks[idx]
+        : gpState.trackNames[idx];
+      const playerIds = gpState.selectedPlayers.map(p => p.player_id);
+      const trackPrediction = currentTrackName
+        ? Stats.getTrackPrediction(data, playerIds, currentTrackName)
+        : null;
       return UI.renderGPRace(
         gpState.currentRace,
         gpState.selectedPlayers,
         gpState.raceResults[gpState.currentRace - 1],
         gpState.raceResults.slice(0, gpState.currentRace - 1),
         gpState.selectedCup,
-        gpState.predictions
+        gpState.predictions,
+        trackPrediction
       );
     } else {
       return UI.renderGPSummary(
