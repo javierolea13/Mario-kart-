@@ -256,7 +256,7 @@ const UI = (() => {
     return `
       <div class="section-header">🏁 Carrera ${raceNum} de 4</div>
       <div class="wizard-progress">${steps}</div>
-      ${raceNum === 1 && predictions ? renderPredictions(predictions) : ''}
+      ${predictions ? renderPredictions(predictions) : ''}
       <div class="card">
         <div class="form-group">
           <label class="form-label">Nombre de la pista</label>
@@ -699,16 +699,20 @@ const UI = (() => {
   function renderPredictions(predictions) {
     if (!predictions || predictions.length === 0) return '';
 
-    const rows = predictions.map((p, i) => {
+    const rows = predictions.map(p => {
       const trendIcon = p.trend === 'up' ? '📈' : p.trend === 'down' ? '📉' : '➡️';
-      const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}o`;
+      const rank = p.predictedRank;
+      const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}o`;
+      const meta = p.rookie
+        ? 'Sin historial — debutante'
+        : `${p.weightedPoints} pts/GP pond. · ${p.weightedPosition}o lugar prom. · ${p.gpsPlayed} GPs`;
       return `
         <div class="ranking-item">
           <div class="ranking-position">${medal}</div>
           <div class="ranking-avatar" style="background:${p.color || '#666'};width:32px;height:32px;font-size:0.8rem">${getInitial(p.name)}</div>
           <div class="ranking-info">
             <div class="ranking-name">${p.name} ${trendIcon}</div>
-            <div class="ranking-meta">${p.avgPerGP} pts/GP prom | ${p.gpsPlayed} GPs</div>
+            <div class="ranking-meta">${meta}</div>
           </div>
         </div>
       `;
@@ -716,7 +720,8 @@ const UI = (() => {
 
     return `
       <div class="card" style="border-color:var(--purple)">
-        <div class="card-title">🔮 Prediccion</div>
+        <div class="card-title">🔮 Predicción de lugar</div>
+        <div class="text-muted" style="font-size:0.7rem;margin-bottom:8px">Ponderado: los últimos GPs pesan más (decaimiento 75%)</div>
         <div class="ranking-list">${rows}</div>
       </div>
     `;

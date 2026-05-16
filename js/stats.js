@@ -347,36 +347,106 @@ const Stats = (() => {
   }
 
   // ---- PREDICTIONS ----
+  // Weighted prediction using exponential decay: recent GPs count more
+  // (similar to credit scoring where recent payment history dominates).
+  // DECAY = 0.75 means each older GP weighs 75% of the next-newer one.
   function getPredictions(data, selectedPlayerIds) {
-    const allStats = computeAll(data);
-    if (!allStats || !allStats.rankings.length) return null;
+    const DECAY = 0.75;
+    const { players, tournaments, results } = data;
+
+    const playerMap = {};
+    players.forEach(p => { playerMap[p.player_id] = p; });
+
+    const sortedTournaments = [...tournaments].sort((a, b) =>
+      new Date(a.date) - new Date(b.date)
+    );
+
+    // Group results by tournament+player
+    const tpResults = {};
+    results.forEach(r => {
+      const key = r.tournament_id + '|' + r.player_id;
+      if (!tpResults[key]) tpResults[key] = [];
+      tpResults[key].push(r);
+    });
+
+    // Build per-player GP history (chronological)
+    const gpHistoryByPlayer = {};
+    selectedPlayerIds.forEach(pid => { gpHistoryByPlayer[pid] = []; });
+
+    sortedTournaments.forEach(t => {
+      selectedPlayerIds.forEach(pid => {
+        const rs = tpResults[t.tournament_id + '|' + pid];
+        if (!rs || !rs.length) return;
+        const points = rs.reduce((s, r) =>
+          s + (typeof r.points === 'number' ? r.points : parseInt(r.points) || 0), 0);
+        const positions = rs.map(r =>
+          typeof r.position === 'number' ? r.position : parseInt(r.position) || 12);
+        const avgPos = positions.reduce((a, b) => a + b, 0) / positions.length;
+        gpHistoryByPlayer[pid].push({ points, avgPos });
+      });
+    });
 
     const predictions = selectedPlayerIds.map(pid => {
-      const ranking = allStats.rankings.find(r => r.player.player_id === pid);
-      if (!ranking) return { player_id: pid, name: '??', avgPerGP: 0, avgPos: 24, trend: 'neutral' };
+      const player = playerMap[pid];
+      const history = gpHistoryByPlayer[pid] || [];
 
-      // Check recent trend (last 3 GPs)
-      const recentPositions = ranking.positions.slice(-12); // last ~3 GPs worth
-      const oldPositions = ranking.positions.slice(0, -12);
-      const recentAvg = recentPositions.length > 0 ? recentPositions.reduce((a,b) => a+b, 0) / recentPositions.length : 24;
-      const oldAvg = oldPositions.length > 0 ? oldPositions.reduce((a,b) => a+b, 0) / oldPositions.length : 24;
+      if (history.length === 0) {
+        return {
+          player_id: pid,
+          name: player ? player.name : '??',
+          color: player ? player.avatar_color : '#666',
+          weightedPoints: 0,
+          weightedPosition: 12,
+          gpsPlayed: 0,
+          trend: 'neutral',
+          rookie: true
+        };
+      }
+
+      const N = history.length;
+      let wSum = 0, ptsSum = 0, posSum = 0;
+      history.forEach((gp, i) => {
+        const w = Math.pow(DECAY, N - 1 - i); // newest = weight 1
+        wSum += w;
+        ptsSum += gp.points * w;
+        posSum += gp.avgPos * w;
+      });
+
+      const weightedPoints = ptsSum / wSum;
+      const weightedPosition = posSum / wSum;
+
+      // Trend: compare second half vs first half by avg position
       let trend = 'neutral';
-      if (recentPositions.length >= 4 && oldPositions.length >= 4) {
-        if (recentAvg < oldAvg - 1) trend = 'up';
-        else if (recentAvg > oldAvg + 1) trend = 'down';
+      if (N >= 4) {
+        const half = Math.floor(N / 2);
+        const older = history.slice(0, half);
+        const recent = history.slice(-half);
+        const olderAvg = older.reduce((s, g) => s + g.avgPos, 0) / older.length;
+        const recentAvg = recent.reduce((s, g) => s + g.avgPos, 0) / recent.length;
+        if (recentAvg < olderAvg - 0.5) trend = 'up';
+        else if (recentAvg > olderAvg + 0.5) trend = 'down';
       }
 
       return {
         player_id: pid,
-        name: ranking.player.name,
-        color: ranking.player.avatar_color,
-        avgPerGP: parseFloat(ranking.avgPerGP),
-        avgPos: parseFloat(ranking.avgPosition),
-        winRate: parseFloat(ranking.winRate),
-        gpsPlayed: ranking.gpsPlayed,
-        trend
+        name: player ? player.name : '??',
+        color: player ? player.avatar_color : '#666',
+        weightedPoints: parseFloat(weightedPoints.toFixed(1)),
+        weightedPosition: parseFloat(weightedPosition.toFixed(1)),
+        gpsPlayed: N,
+        trend,
+        rookie: false
       };
-    }).sort((a, b) => b.avgPerGP - a.avgPerGP);
+    });
+
+    // Rank: rookies last; else higher weighted points first
+    predictions.sort((a, b) => {
+      if (a.rookie && !b.rookie) return 1;
+      if (!a.rookie && b.rookie) return -1;
+      return b.weightedPoints - a.weightedPoints;
+    });
+
+    predictions.forEach((p, i) => { p.predictedRank = i + 1; });
 
     return predictions;
   }
